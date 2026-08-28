@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace WebBase\Core\helper;
 
+use WebBase\Core\BaseModel;
 use WebBase\Core\Helper;
 use WebBase\Core\service\SystemService;
 use think\Container;
@@ -106,6 +107,36 @@ class QueryHelper extends Helper
         $this->page = PageHelper::instance();
         $this->input = $this->getInputData($input);
         $this->query = $this->page->autoSortQuery($dbQuery);
+        is_callable($callable) && call_user_func($callable, $this, $this->query);
+        return $this;
+    }
+
+    /**
+     * 初始化回收站查询，只返回 deleted_at 非空的数据.
+     * @param BaseQuery|Model|string $dbQuery
+     * @param null|array|string $input 输入数据
+     * @param null|callable $callable 初始回调
+     */
+    public function initRecycle($dbQuery, $input = null, ?callable $callable = null): QueryHelper
+    {
+        $this->init($dbQuery, $input);
+        $this->assertSoftDeleteModel();
+        $this->query->withTrashed()->whereNotNull('deleted_at');
+        is_callable($callable) && call_user_func($callable, $this, $this->query);
+        return $this;
+    }
+
+    /**
+     * 初始化包含正常数据和回收站数据的查询.
+     * @param BaseQuery|Model|string $dbQuery
+     * @param null|array|string $input 输入数据
+     * @param null|callable $callable 初始回调
+     */
+    public function initAll($dbQuery, $input = null, ?callable $callable = null): QueryHelper
+    {
+        $this->init($dbQuery, $input);
+        $this->assertSoftDeleteModel();
+        $this->query->withTrashed();
         is_callable($callable) && call_user_func($callable, $this, $this->query);
         return $this;
     }
@@ -337,7 +368,11 @@ class QueryHelper extends Helper
             'mForm' => [FormHelper::class, 'init'],
             'mSave' => [SaveHelper::class, 'init'],
             'mQuery' => [QueryHelper::class, 'init'],
+            'mRecycleQuery' => [QueryHelper::class, 'initRecycle'],
+            'mAllQuery' => [QueryHelper::class, 'initAll'],
             'mDelete' => [DeleteHelper::class, 'init'],
+            'mRestore' => [RestoreHelper::class, 'init'],
+            'mForceDelete' => [ForceDeleteHelper::class, 'init'],
             'mUpdate' => [SystemService::class, 'update'],
         ];
         if (isset($hooks[$method])) {
@@ -387,5 +422,15 @@ class QueryHelper extends Helper
         }
         $input = $input ?: 'request';
         return $this->app->request->{$input}();
+    }
+
+    /**
+     * 确保回收站操作只用于软删除模型.
+     */
+    private function assertSoftDeleteModel(): void
+    {
+        if (!$this->query->getModel() instanceof BaseModel) {
+            throw new \LogicException('Recycle queries require a model extending WebBase\\Core\\BaseModel.');
+        }
     }
 }

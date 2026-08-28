@@ -17,13 +17,11 @@ declare(strict_types=1);
 
 namespace WebBase\Core\model;
 
-use WebBase\Core\Model;
+use WebBase\Core\BaseModel;
 
 /**
  * 数据字典模型.
  *
- * @property int $deleted 删除状态(0正常,1已删)
- * @property int $deleted_by 删除用户
  * @property int $id
  * @property int $sort 排序权重
  * @property int $status 数据状态(0禁用,1启动)
@@ -35,7 +33,7 @@ use WebBase\Core\Model;
  * @property string $type 数据类型
  * @class SystemBase
  */
-class SystemBase extends Model
+class SystemBase extends BaseModel
 {
     protected $createTime = 'create_at';
 
@@ -62,7 +60,7 @@ class SystemBase extends Model
      */
     public static function items(string $type, array &$data = [], string $field = 'base_code', string $bind = 'base_info'): array
     {
-        $map = ['type' => $type, 'status' => 1, 'deleted' => 0];
+        $map = ['type' => $type, 'status' => 1];
         $bases = static::mk()->where($map)->order('sort desc,id asc')->column('code,name,content', 'code');
         if (count($data) > 0) {
             foreach ($data as &$vo) {
@@ -75,10 +73,15 @@ class SystemBase extends Model
     /**
      * 获取所有数据类型.
      * @param bool $simple 加载默认值
+     * @param bool $recycle 是否读取回收站类型
      */
-    public static function types(bool $simple = false): array
+    public static function types(bool $simple = false, bool $recycle = false): array
     {
-        $types = static::mk()->where(['deleted' => 0])->distinct()->column('type');
+        $query = static::mk();
+        if ($recycle) {
+            $query = $query->onlyTrashed();
+        }
+        $types = $query->distinct()->column('type');
         if (empty($types) && empty($simple)) {
             $types = ['身份权限'];
         }

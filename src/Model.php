@@ -27,9 +27,13 @@ use think\db\Query;
  * @mixin \think\db\Query
  * @method static bool mSave(array $data = [], string $field = '', mixed $where = []) 快捷更新
  * @method static bool mDelete(string $field = '', mixed $where = []) 快捷删除
+ * @method static bool mRestore(string $field = '', mixed $where = []) 恢复软删除数据
+ * @method static bool mForceDelete(string $field = '', mixed $where = []) 永久删除回收站数据
  * @method static bool|array mForm(string $template = '', string $field = '', mixed $where = [], array $data = []) 快捷表单
  * @method static bool|integer mUpdate(array $data = [], string $field = '', mixed $where = []) 快捷保存
  * @method static QueryHelper mQuery($input = null, callable $callable = null) 快捷查询
+ * @method static QueryHelper mRecycleQuery($input = null, callable $callable = null) 回收站查询
+ * @method static QueryHelper mAllQuery($input = null, callable $callable = null) 包含回收站查询
  */
 abstract class Model extends \think\Model
 {
@@ -64,6 +68,8 @@ abstract class Model extends \think\Model
             'onAdminUpdate' => '更新%s[%s]记录',
             'onAdminInsert' => '增加%s[%s]成功',
             'onAdminDelete' => '删除%s[%s]成功',
+            'onAdminRestore' => '恢复%s[%s]成功',
+            'onAdminForceDelete' => '永久删除%s[%s]成功',
         ];
         if (isset($oplogs[$method])) {
             if ($this->oplogType && $this->oplogName) {

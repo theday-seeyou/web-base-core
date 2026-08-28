@@ -17,14 +17,13 @@ declare(strict_types=1);
 
 namespace WebBase\Core\model;
 
-use WebBase\Core\Model;
+use WebBase\Core\BaseModel;
 use think\model\relation\HasOne;
 
 /**
  * 系统用户模型.
  *
  * @property int $id
- * @property int $is_deleted 删除(1删除,0未删)
  * @property int $login_num 登录次数
  * @property int $sort 排序权重
  * @property int $status 状态(0禁用,1启用)
@@ -44,7 +43,7 @@ use think\model\relation\HasOne;
  * @property SystemBase $userinfo
  * @class SystemUser
  */
-class SystemUser extends Model
+class SystemUser extends BaseModel
 {
     protected $createTime = 'create_at';
 
@@ -70,7 +69,7 @@ class SystemUser extends Model
      * @param string $target 关联目标字段
      * @param string $fields 关联数据字段
      */
-    public static function items($map, array &$data = [], string $field = 'uuid', string $target = 'user_info', string $fields = 'username,nickname,headimg,status,is_deleted'): array
+    public static function items($map, array &$data = [], string $field = 'uuid', string $target = 'user_info', string $fields = 'username,nickname,headimg,status'): array
     {
         $query = static::mk()->where($map)->order('sort desc,id desc');
         if (count($data) > 0) {
@@ -89,7 +88,7 @@ class SystemUser extends Model
     public function userinfo(): HasOne
     {
         return $this->hasOne(SystemBase::class, 'code', 'usertype')->where([
-            'type' => '身份权限', 'status' => 1, 'deleted' => 0,
+            'type' => '身份权限', 'status' => 1,
         ]);
     }
 

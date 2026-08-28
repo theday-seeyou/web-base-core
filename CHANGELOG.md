@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0 - 2026-08-28
+
+### Added
+
+- 新增默认使用 nullable `deleted_at` 的 `BaseModel`。
+- 新增 `mRecycleQuery()`、`mAllQuery()`、`mRestore()` 与 `mForceDelete()` 回收站接口。
+
+### Changed
+
+- 删除助手不再检测或兼容 `deleted`、`is_deleted`、`deleted_time` 等旧字段。
+- `SystemBase` 与 `SystemUser` 统一改用 `BaseModel` 软删除契约。
+
 ## 0.2.1 - 2026-08-28
 
 ### Fixed

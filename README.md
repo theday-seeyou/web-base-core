@@ -27,8 +27,27 @@ php think service:discover
 
 ```php
 use WebBase\Core\Controller;
+use WebBase\Core\BaseModel;
 use WebBase\Core\Model;
 use WebBase\Core\service\AdminService;
+```
+
+## 默认软删除与回收站
+
+需要回收站能力的业务模型统一继承 `BaseModel`，对应数据表必须包含
+`deleted_at datetime null default null`。框架不检测也不兼容其他删除字段。
+
+```php
+final class Article extends BaseModel
+{
+}
+
+Article::mQuery();         // 仅正常数据，自动添加 deleted_at IS NULL
+Article::mRecycleQuery();  // 仅回收站数据
+Article::mAllQuery();      // 正常数据和回收站数据
+Article::mDelete();        // 软删除
+Article::mRestore();       // 恢复
+Article::mForceDelete();   // 从回收站永久删除
 ```
 
 ## 开发

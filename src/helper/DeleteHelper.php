@@ -17,6 +17,7 @@ declare(strict_types=1);
 
 namespace WebBase\Core\helper;
 
+use WebBase\Core\BaseModel;
 use WebBase\Core\Helper;
 use think\db\BaseQuery;
 use think\db\exception\DbException;
@@ -60,30 +61,13 @@ class DeleteHelper extends Helper
             $this->class->error('数据删除失败！');
         }
 
-        // 组装执行数据
-        $data = [];
-        if (method_exists($query, 'getTableFields')) {
-            $fields = $query->getTableFields();
-            if (in_array('deleted', $fields)) {
-                $data['deleted'] = 1;
-            }
-            if (in_array('is_deleted', $fields)) {
-                $data['is_deleted'] = 1;
-            }
-            if (isset($data['deleted']) || isset($data['is_deleted'])) {
-                if (in_array('deleted_at', $fields)) {
-                    $data['deleted_at'] = date('Y-m-d H:i:s');
-                }
-                if (in_array('deleted_time', $fields)) {
-                    $data['deleted_time'] = time();
-                }
-            }
-        }
-
         // 执行删除操作
-        if ($result = (empty($data) ? $query->delete() : $query->update($data)) !== false) {
+        $model = $query->getModel();
+        $result = $model instanceof BaseModel
+            ? $query->update(['deleted_at' => date('Y-m-d H:i:s')])
+            : $query->delete();
+        if ($result !== false) {
             // 模型自定义事件回调
-            $model = $query->getModel();
             if ($model instanceof \WebBase\Core\Model) {
                 $model->onAdminDelete(strval($value));
             }
