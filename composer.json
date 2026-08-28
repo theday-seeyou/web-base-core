@@ -1,0 +1,61 @@
+{
+  "name": "theday-seeyou/web-base-core",
+  "type": "library",
+  "license": "MIT",
+  "homepage": "https://github.com/theday-seeyou/web-base-core",
+  "description": "Reusable CMS administration core for WebBase",
+  "keywords": [
+    "cms",
+    "thinkphp",
+    "webbase"
+  ],
+  "authors": [
+    {
+      "name": "WebBase contributors"
+    }
+  ],
+  "support": {
+    "source": "https://github.com/theday-seeyou/web-base-core",
+    "issues": "https://github.com/theday-seeyou/web-base-core/issues"
+  },
+  "require": {
+    "php": ">=8.1",
+    "ext-curl": "*",
+    "ext-gd": "*",
+    "ext-iconv": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*",
+    "ext-openssl": "*",
+    "ext-zlib": "*",
+    "symfony/process": "^6.0|^7.0",
+    "topthink/framework": "^8.0",
+    "topthink/think-migration": "^3.0",
+    "topthink/think-orm": "^3.0"
+  },
+  "autoload": {
+    "files": [
+      "src/common.php"
+    ],
+    "psr-4": {
+      "WebBase\\Core\\": "src"
+    }
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^10.0|^11.0"
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "WebBase\\Core\\Tests\\": "tests"
+    }
+  },
+  "extra": {
+    "think": {
+      "services": [
+        "WebBase\\Core\\Library"
+      ]
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}
