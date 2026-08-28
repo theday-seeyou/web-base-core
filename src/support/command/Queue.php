@@ -120,22 +120,31 @@ class Queue extends Command
     protected function webStartAction()
     {
         $prot = 'http';
-        $port = $this->input->getOption('port') ?: '80';
-        $host = $this->input->getOption('host') ?: '127.0.0.1';
+        $port = static::validatePort((string)($this->input->getOption('port') ?: '80'));
+        $host = static::validateHost((string)($this->input->getOption('host') ?: '127.0.0.1'));
+        $bindHost = str_contains($host, ':') ? "[{$host}]" : $host;
+        $bindAddress = "{$bindHost}:{$port}";
         $root = syspath('public' . DIRECTORY_SEPARATOR);
-        $command = "php -S {$host}:{$port} -t {$root} {$root}router.php";
+        $url = "{$prot}://{$bindHost}:{$port}";
+        $args = sprintf(
+            '-S %s -t %s %s',
+            $this->process->buildCommand([$bindAddress]),
+            $this->process->buildCommand([$root]),
+            $this->process->buildCommand([$root . 'router.php'])
+        );
+        $command = $this->process->php($args);
         $this->output->comment(">$ {$command}");
-        if (count($result = $this->process->query($command)) > 0) {
+        if (count($result = $this->process->query($bindAddress)) > 0) {
             if ($this->process->isWin()) {
-                $this->process->exec("start {$prot}://{$host}:{$port}");
+                $this->process->exec('start "" ' . $this->process->buildCommand([$url]));
             }
             $this->output->writeln("># WebServer process already exist for pid {$result[0]['pid']}");
         } else {
             $this->process->create($command, 2000);
-            if (count($result = $this->process->query($command)) > 0) {
+            if (count($result = $this->process->query($bindAddress)) > 0) {
                 $this->output->writeln("># WebServer process started successfully for pid {$result[0]['pid']}");
                 if ($this->process->isWin()) {
-                    $this->process->exec("start {$prot}://{$host}:{$port}");
+                    $this->process->exec('start "" ' . $this->process->buildCommand([$url]));
                 }
             } else {
                 $this->output->writeln('># WebServer process failed to start');
@@ -281,6 +290,8 @@ class Queue extends Command
         $this->code = trim($this->input->getArgument('code'));
         if (empty($this->code)) {
             $this->output->error('Task number needs to be specified for task execution');
+        } elseif (!static::isValidTaskCode($this->code)) {
+            $this->output->error('Task number contains invalid characters');
         } else {
             try {
                 set_time_limit(0) && PHP_SAPI !== 'cli' && ignore_user_abort(true);
@@ -333,6 +344,9 @@ class Queue extends Command
             [$map, $start] = [[['status', '=', static::STATE_WAIT], ['exec_time', '<=', time()]], microtime(true)];
             foreach (SystemQueue::mk()->where($map)->order('exec_time asc')->cursor() as $queue) {
                 try {
+                    if (!static::isValidTaskCode((string)$queue['code'])) {
+                        throw new \UnexpectedValueException('Task number contains invalid characters');
+                    }
                     $args = "webbase:queue dorun {$queue['code']} -";
                     $this->output->comment(">$ {$this->process->think($args)}");
                     if (count($this->process->thinkQuery($args)) > 0) {
@@ -385,5 +399,40 @@ class Queue extends Command
                 $this->app->log->error("Queue {$this->queue->record->getAttr('code')} Loops Failed. {$exception->getMessage()}");
             }
         }
+    }
+
+    /**
+     * 校验调试服务器监听端口。
+     */
+    private static function validatePort(string $port): string
+    {
+        if (!ctype_digit($port) || ($value = (int)$port) < 1 || $value > 65535) {
+            throw new \InvalidArgumentException('WebServer port must be between 1 and 65535.');
+        }
+        return (string)$value;
+    }
+
+    /**
+     * 校验调试服务器监听地址。
+     */
+    private static function validateHost(string $host): string
+    {
+        $host = trim($host, " \t\n\r\0\x0B[]");
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return $host;
+        }
+        $label = '[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?';
+        if (strlen($host) > 253 || !preg_match("/^(?:{$label}\\.)*{$label}$/D", $host)) {
+            throw new \InvalidArgumentException('WebServer host must be a valid IP address or hostname.');
+        }
+        return strtolower($host);
+    }
+
+    /**
+     * 队列编号会拼接进后台进程参数，只允许安全字符。
+     */
+    private static function isValidTaskCode(string $code): bool
+    {
+        return $code !== '' && (bool)preg_match('/^[A-Za-z0-9_-]+$/D', $code);
     }
 }

@@ -19,6 +19,9 @@ php think service:discover
 - `webbase:publish` 只能由开发者显式运行。
 - `webbase:publish` 默认跳过已有文件，只有显式 `--force` 才覆盖。
 - 发布命令不会自动删除旧迁移文件。
+- 文件复制默认不覆盖目标文件，也不会删除来源文件。
+- HTTP/HTTPS 默认校验证书，并禁止跳转到本地文件等非网络协议。
+- 加密数据使用 AES-256-GCM，同时保留旧 AES-CBC 密文的只读兼容。
 
 ## 命名空间
 
@@ -34,7 +37,21 @@ use WebBase\Core\service\AdminService;
 composer install
 composer validate --strict
 vendor/bin/phpunit
+composer audit
 ```
+
+普通单元测试不要求数据库。需要运行数据库集成测试时，显式配置：
+
+```bash
+set WEBBASE_TEST_DB_HOST=127.0.0.1
+set WEBBASE_TEST_DB_PORT=3306
+set WEBBASE_TEST_DB_NAME=webbase_test
+set WEBBASE_TEST_DB_USER=root
+set WEBBASE_TEST_DB_PASSWORD=your-password
+vendor/bin/phpunit
+```
+
+PowerShell 使用 `$env:WEBBASE_TEST_DB_NAME = "webbase_test"` 形式设置环境变量。
 
 ## 许可证
 

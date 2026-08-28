@@ -91,6 +91,10 @@ class HttpExtend
      */
     public static function request(string $method, string $location, array $options = [])
     {
+        $scheme = strtolower((string)parse_url($location, PHP_URL_SCHEME));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            throw new \InvalidArgumentException('Only HTTP and HTTPS requests are allowed.');
+        }
         // GET 参数设置
         if (!empty($options['query'])) {
             $location .= strpos($location, '?') !== false ? '&' : '?';
@@ -148,9 +152,20 @@ class HttpExtend
         curl_setopt($curl, CURLOPT_URL, $location);
         curl_setopt($curl, CURLOPT_AUTOREFERER, true);
         curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($curl, CURLOPT_MAXREDIRS, 5);
+        curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, isset($options['connect_timeout']) ? max(1, (int)$options['connect_timeout']) : 10);
         curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        curl_setopt($curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        $verify = !array_key_exists('verify', $options) || $options['verify'] !== false;
+        curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, $verify);
+        curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, $verify ? 2 : 0);
+        if (!empty($options['ca_file'])) {
+            if (!is_file($options['ca_file'])) {
+                throw new \InvalidArgumentException('Configured CA file does not exist.');
+            }
+            curl_setopt($curl, CURLOPT_CAINFO, $options['ca_file']);
+        }
         $content = curl_exec($curl);
         curl_close($curl);
         return $content;

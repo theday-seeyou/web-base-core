@@ -35,6 +35,8 @@ use think\Container;
  */
 abstract class Storage
 {
+    private const MAX_IMAGE_BYTES = 16777216;
+
     /**
      * 静态访问启用.
      * @param string $method 方法名称
@@ -157,14 +159,28 @@ abstract class Storage
      */
     public static function curlGet(string $url): string
     {
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        if (!in_array($scheme, ['http', 'https'], true)) {
+            throw new \InvalidArgumentException('Only HTTP and HTTPS downloads are allowed.');
+        }
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_HEADER, 0);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        $body = curl_exec($ch) ?: '';
+        curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        $body = curl_exec($ch);
+        if ($body === false) {
+            $message = curl_error($ch);
+            curl_close($ch);
+            throw new \RuntimeException("Unable to download remote resource: {$message}");
+        }
         curl_close($ch);
         return $body;
     }
@@ -181,14 +197,21 @@ abstract class Storage
     {
         if (preg_match('|^data:image/(.*?);base64,|i', $base64)) {
             [$ext, $img] = explode('|||', preg_replace('|^data:image/(.*?);base64,|i', '$1|||', $base64));
-            $name = static::name($img, $ext, $prefix);
-            if (empty($ext) || !in_array(strtolower($ext), ['gif', 'png', 'jpg', 'jpeg'])) {
+            $content = base64_decode($img, true);
+            if ($content === false || strlen($content) > self::MAX_IMAGE_BYTES) {
                 throw new Exception('内容格式异常！');
             }
-            if ($safemode) {
-                return LocalStorage::instance()->set($name, base64_decode($img), true);
+            $image = getimagesizefromstring($content);
+            $extensions = ['image/gif' => 'gif', 'image/png' => 'png', 'image/jpeg' => 'jpg'];
+            if (!is_array($image) || !isset($extensions[$image['mime'] ?? ''])) {
+                throw new Exception('内容格式异常！');
             }
-            return static::instance()->set($name, base64_decode($img));
+            $ext = $extensions[$image['mime']];
+            $name = static::name($img, $ext, $prefix);
+            if ($safemode) {
+                return LocalStorage::instance()->set($name, $content, true);
+            }
+            return static::instance()->set($name, $content);
         }
         return ['url' => $base64];
     }

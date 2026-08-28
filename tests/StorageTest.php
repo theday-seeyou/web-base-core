@@ -11,7 +11,6 @@ declare(strict_types=1);
  * +----------------------------------------------------------------------
  * | 开源协议 ( https://mit-license.org )
  * +----------------------------------------------------------------------
- * | gitee 代码仓库：https://github.com/theday-seeyou/web-base-core
  * | github 代码仓库：https://github.com/theday-seeyou/web-base-core
  * +----------------------------------------------------------------------
  */
@@ -20,10 +19,6 @@ namespace WebBase\Core\tests;
 
 use PHPUnit\Framework\TestCase;
 
-/**
- * @internal
- * @coversNothing
- */
 class StorageTest extends TestCase
 {
     public function testInit()

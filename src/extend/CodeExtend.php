@@ -23,15 +23,33 @@ namespace WebBase\Core\extend;
  */
 class CodeExtend
 {
+    private const ENCRYPTION_PREFIX = 'v2.';
+
+    private const ENCRYPTION_CIPHER = 'aes-256-gcm';
+
+    private const ENCRYPTION_IV_LENGTH = 12;
+
+    private const ENCRYPTION_TAG_LENGTH = 16;
+
+    private const MAX_DECOMPRESSED_BYTES = 16777216;
+
     /**
      * 生成 UUID 编码
      */
     public static function uuid(): string
     {
-        $chars = md5(uniqid(strval(mt_rand(0, 9999)), true));
-        $value = substr($chars, 0, 8) . '-' . substr($chars, 8, 4) . '-';
-        $value .= substr($chars, 12, 4) . '-' . substr($chars, 16, 4) . '-';
-        return strtoupper($value . substr($chars, 20, 12));
+        $bytes = random_bytes(16);
+        $bytes[6] = chr((ord($bytes[6]) & 0x0F) | 0x40);
+        $bytes[8] = chr((ord($bytes[8]) & 0x3F) | 0x80);
+        $hex = strtoupper(bin2hex($bytes));
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12)
+        );
     }
 
     /**
@@ -42,17 +60,18 @@ class CodeExtend
      */
     public static function random(int $size = 10, int $type = 1, string $prefix = ''): string
     {
-        $numbs = '0123456789';
-        $chars = 'abcdefghijklmnopqrstuvwxyz';
-        if ($type === 1) {
-            $chars = $numbs;
+        if ($size < 1) {
+            throw new \InvalidArgumentException('Random code length must be greater than zero.');
         }
-        if ($type === 3) {
-            $chars = "{$numbs}{$chars}";
-        }
-        $code = $prefix . $chars[rand(1, strlen($chars) - 1)];
+        $chars = match ($type) {
+            1 => '0123456789',
+            2 => 'abcdefghijklmnopqrstuvwxyz',
+            3 => '0123456789abcdefghijklmnopqrstuvwxyz',
+            default => throw new \InvalidArgumentException('Random code type must be 1, 2 or 3.'),
+        };
+        $code = substr($prefix, 0, $size);
         while (strlen($code) < $size) {
-            $code .= $chars[rand(0, strlen($chars) - 1)];
+            $code .= $chars[random_int(0, strlen($chars) - 1)];
         }
         return $code;
     }
@@ -119,9 +138,26 @@ class CodeExtend
      */
     public static function encrypt($data, string $skey): string
     {
-        $iv = static::random(16, 3);
-        $value = openssl_encrypt(serialize($data), 'AES-256-CBC', $skey, 0, $iv);
-        return static::enSafe64(json_encode(['iv' => $iv, 'value' => $value]));
+        $iv = random_bytes(self::ENCRYPTION_IV_LENGTH);
+        $value = openssl_encrypt(
+            serialize($data),
+            self::ENCRYPTION_CIPHER,
+            hash('sha256', $skey, true),
+            OPENSSL_RAW_DATA,
+            $iv,
+            $tag,
+            '',
+            self::ENCRYPTION_TAG_LENGTH
+        );
+        if ($value === false) {
+            throw new \RuntimeException('Unable to encrypt data.');
+        }
+        $payload = json_encode([
+            'iv' => static::enSafe64($iv),
+            'tag' => static::enSafe64($tag),
+            'value' => static::enSafe64($value),
+        ], JSON_THROW_ON_ERROR);
+        return self::ENCRYPTION_PREFIX . static::enSafe64($payload);
     }
 
     /**
@@ -132,8 +168,40 @@ class CodeExtend
      */
     public static function decrypt(string $data, string $skey)
     {
-        $attr = json_decode(static::deSafe64($data), true);
-        return unserialize(openssl_decrypt($attr['value'], 'AES-256-CBC', $skey, 0, $attr['iv']));
+        try {
+            if (str_starts_with($data, self::ENCRYPTION_PREFIX)) {
+                $attr = json_decode(static::deSafe64(substr($data, strlen(self::ENCRYPTION_PREFIX))), true, 512, JSON_THROW_ON_ERROR);
+                if (!is_array($attr) || !isset($attr['iv'], $attr['tag'], $attr['value'])) {
+                    throw new \UnexpectedValueException('Invalid encrypted payload.');
+                }
+                $value = openssl_decrypt(
+                    static::deSafe64($attr['value']),
+                    self::ENCRYPTION_CIPHER,
+                    hash('sha256', $skey, true),
+                    OPENSSL_RAW_DATA,
+                    static::deSafe64($attr['iv']),
+                    static::deSafe64($attr['tag'])
+                );
+                if ($value === false) {
+                    throw new \UnexpectedValueException('Encrypted payload authentication failed.');
+                }
+                return static::unserializeValue($value);
+            }
+
+            $attr = json_decode(static::deSafe64($data), true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($attr) || !isset($attr['iv'], $attr['value'])) {
+                throw new \UnexpectedValueException('Invalid legacy encrypted payload.');
+            }
+            $value = openssl_decrypt($attr['value'], 'AES-256-CBC', $skey, 0, $attr['iv']);
+            if ($value === false) {
+                throw new \UnexpectedValueException('Unable to decrypt legacy payload.');
+            }
+            return static::unserializeValue($value);
+        } catch (\UnexpectedValueException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            throw new \UnexpectedValueException('Unable to decrypt data.', 0, $exception);
+        }
     }
 
     /**
@@ -151,7 +219,11 @@ class CodeExtend
      */
     public static function deSafe64(string $text): string
     {
-        return base64_decode(str_pad(strtr($text, '-_', '+/'), (int)(ceil(strlen($text) / 4) * 4), '='));
+        $value = base64_decode(str_pad(strtr($text, '-_', '+/'), (int)(ceil(strlen($text) / 4) * 4), '='), true);
+        if ($value === false) {
+            throw new \UnexpectedValueException('Invalid Base64Url data.');
+        }
+        return $value;
     }
 
     /**
@@ -160,7 +232,11 @@ class CodeExtend
      */
     public static function enzip($data): string
     {
-        return static::enSafe64(gzcompress(serialize($data)));
+        $value = gzcompress(serialize($data));
+        if ($value === false) {
+            throw new \RuntimeException('Unable to compress data.');
+        }
+        return static::enSafe64($value);
     }
 
     /**
@@ -169,6 +245,30 @@ class CodeExtend
      */
     public static function dezip(string $string)
     {
-        return unserialize(gzuncompress(static::deSafe64($string)));
+        $value = gzuncompress(static::deSafe64($string), self::MAX_DECOMPRESSED_BYTES);
+        if ($value === false) {
+            throw new \UnexpectedValueException('Unable to decompress data.');
+        }
+        return static::unserializeValue($value);
+    }
+
+    /**
+     * 安全解析内部序列化数据，不允许实例化对象。
+     * @return mixed
+     */
+    private static function unserializeValue(string $value)
+    {
+        set_error_handler(static function (int $severity, string $message): never {
+            throw new \UnexpectedValueException($message, $severity);
+        });
+        try {
+            $result = unserialize($value, ['allowed_classes' => false]);
+        } finally {
+            restore_error_handler();
+        }
+        if ($result === false && $value !== 'b:0;') {
+            throw new \UnexpectedValueException('Invalid serialized data.');
+        }
+        return $result;
     }
 }

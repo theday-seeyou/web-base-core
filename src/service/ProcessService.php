@@ -47,7 +47,8 @@ class ProcessService extends Service
      */
     public static function php(string $args = ''): string
     {
-        return ModuleService::getPhpExec() . ' ' . $args;
+        $command = static::buildCommand([ModuleService::getPhpExec()]);
+        return $args === '' ? $command : $command . ' ' . $args;
     }
 
     /**
@@ -57,7 +58,8 @@ class ProcessService extends Service
      */
     public static function think(string $args = '', bool $simple = false): string
     {
-        $command = syspath('think') . ' ' . $args;
+        $command = static::buildCommand([syspath('think')]);
+        $command = $args === '' ? $command : $command . ' ' . $args;
         return $simple ? $command : self::php($command);
     }
 
@@ -73,7 +75,15 @@ class ProcessService extends Service
             $comExec = self::isFile($comExec) ? self::php($comExec) : 'composer';
         }
         $root = Library::$sapp->getRootPath();
-        return "{$comExec} -d {$root} {$args}";
+        return "{$comExec} -d " . static::buildCommand([$root]) . ($args === '' ? '' : " {$args}");
+    }
+
+    /**
+     * 从参数数组生成跨平台安全命令行。
+     */
+    public static function buildCommand(array $command): string
+    {
+        return (new Process(static::normalizeCommand($command)))->getCommandLine();
     }
 
     /**
@@ -121,15 +131,17 @@ class ProcessService extends Service
     {
         $list = [];
         if (static::isWin()) {
-            $lines = static::exec("wmic process where name=\"{$name}\" get processid,CommandLine", true);
-            foreach ($lines as $line) {
-                if (is_numeric(stripos($line, $cmd))) {
-                    $attr = explode(' ', trim(preg_replace('#\s+#', ' ', $line)));
-                    $list[] = ['pid' => array_pop($attr), 'cmd' => join(' ', $attr)];
+            if (!preg_match('/^[A-Za-z0-9._-]+$/D', $name)) {
+                throw new \InvalidArgumentException('Invalid process executable name.');
+            }
+            foreach (static::queryWindows($name) as $item) {
+                $commandLine = trim((string)($item['CommandLine'] ?? ''));
+                if ($commandLine !== '' && stripos($commandLine, $cmd) !== false) {
+                    $list[] = ['pid' => (string)($item['ProcessId'] ?? ''), 'cmd' => $commandLine];
                 }
             }
         } else {
-            $lines = static::exec("ps ax|grep -v grep|grep \"{$cmd}\"", true);
+            $lines = static::run(['ps', 'ax'], true);
             foreach ($lines as $line) {
                 if (is_numeric(stripos($line, $cmd))) {
                     $attr = explode(' ', trim(preg_replace('#\s+#', ' ', $line)));
@@ -147,12 +159,32 @@ class ProcessService extends Service
      */
     public static function close(int $pid): bool
     {
+        if ($pid < 1) {
+            throw new \InvalidArgumentException('Process id must be greater than zero.');
+        }
         if (static::isWin()) {
-            static::exec("wmic process {$pid} call terminate");
+            static::run(['taskkill', '/PID', (string)$pid, '/F']);
         } else {
-            static::exec("kill -9 {$pid}");
+            static::run(['kill', '-9', (string)$pid]);
         }
         return true;
+    }
+
+    /**
+     * 不经过 Shell 执行参数化指令。
+     * @param array $command 指令及参数
+     * @param bool $outarr 返回数组
+     * @param ?callable $callable 逐行处理
+     * @return array|string
+     */
+    public static function run(array $command, bool $outarr = false, ?callable $callable = null)
+    {
+        $process = new Process(static::normalizeCommand($command), Library::$sapp->getRootPath());
+        $process->run(is_callable($callable) ? static function ($type, $text) use ($callable, $process) {
+            call_user_func($callable, $process, $type, trim(CodeExtend::text2utf8($text))) === true && $process->stop();
+        } : null);
+        $output = str_replace("\r\n", "\n", CodeExtend::text2utf8($process->getOutput()));
+        return $outarr ? explode("\n", $output) : trim($output);
     }
 
     /**
@@ -164,6 +196,9 @@ class ProcessService extends Service
      */
     public static function exec(string $command, bool $outarr = false, ?callable $callable = null)
     {
+        if ($command === '' || str_contains($command, "\0") || preg_match('/[\r\n]/', $command)) {
+            throw new \InvalidArgumentException('Shell command cannot be empty or contain control characters.');
+        }
         $process = Process::fromShellCommandline($command)->setWorkingDirectory(Library::$sapp->getRootPath());
         $process->run(is_callable($callable) ? static function ($type, $text) use ($callable, $process) {
             call_user_func($callable, $process, $type, trim(CodeExtend::text2utf8($text))) === true && $process->stop();
@@ -209,15 +244,48 @@ class ProcessService extends Service
     {
         try {
             return $file !== '' && is_file($file);
-        } catch (\Error|\Exception $exception) {
-            try {
-                if (self::isWin()) {
-                    return self::exec("if exist \"{$file}\" echo 1") === '1';
-                }
-                return self::exec("if [ -f \"{$file}\" ];then echo 1;fi") === '1';
-            } catch (\Error|\Exception $exception) {
-                return false;
+        } catch (\Throwable $exception) {
+            return false;
+        }
+    }
+
+    /**
+     * 校验并标准化参数化进程指令。
+     */
+    private static function normalizeCommand(array $command): array
+    {
+        if ($command === []) {
+            throw new \InvalidArgumentException('Process command cannot be empty.');
+        }
+        foreach ($command as $argument) {
+            if (!is_scalar($argument) || str_contains((string)$argument, "\0")) {
+                throw new \InvalidArgumentException('Process arguments must be scalar values without null bytes.');
             }
         }
+        return array_map('strval', array_values($command));
+    }
+
+    /**
+     * 查询 Windows 进程，优先使用新版系统可用的 CIM。
+     */
+    private static function queryWindows(string $name): array
+    {
+        try {
+            $script = "\$items = @(Get-CimInstance Win32_Process -Filter 'Name = \"{$name}\"' | Select-Object ProcessId,CommandLine); ConvertTo-Json -Compress -InputObject \$items";
+            $output = static::run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', $script]);
+            $items = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            if (is_array($items)) {
+                return array_is_list($items) ? $items : [$items];
+            }
+        } catch (\Throwable $exception) {
+            // 旧版 Windows 继续使用 WMIC 回退。
+        }
+        $items = [];
+        foreach (static::exec("wmic process where name=\"{$name}\" get processid,CommandLine", true) as $line) {
+            if (preg_match('/^(.*?)\s+(\d+)\s*$/', trim($line), $matches)) {
+                $items[] = ['CommandLine' => trim($matches[1]), 'ProcessId' => $matches[2]];
+            }
+        }
+        return $items;
     }
 }

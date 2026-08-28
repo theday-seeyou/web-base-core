@@ -11,7 +11,6 @@ declare(strict_types=1);
  * +----------------------------------------------------------------------
  * | 开源协议 ( https://mit-license.org )
  * +----------------------------------------------------------------------
- * | gitee 代码仓库：https://github.com/theday-seeyou/web-base-core
  * | github 代码仓库：https://github.com/theday-seeyou/web-base-core
  * +----------------------------------------------------------------------
  */
@@ -25,11 +24,11 @@ Db::setConfig([
     'connections' => [
         'mysql' => [
             'type' => 'mysql',
-            'hostname' => '127.0.0.1',
-            'database' => 'admin_v6',
-            'username' => 'admin_v6',
-            'password' => 'FbYBHcWKr2',
-            'hostport' => '3306',
+            'hostname' => getenv('WEBBASE_TEST_DB_HOST') ?: '127.0.0.1',
+            'database' => getenv('WEBBASE_TEST_DB_NAME') ?: 'webbase_test',
+            'username' => getenv('WEBBASE_TEST_DB_USER') ?: 'root',
+            'password' => getenv('WEBBASE_TEST_DB_PASSWORD') ?: '',
+            'hostport' => getenv('WEBBASE_TEST_DB_PORT') ?: '3306',
             'charset' => 'utf8mb4',
             'debug' => true,
         ],

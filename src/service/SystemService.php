@@ -318,7 +318,10 @@ class SystemService extends Service
                 return $default;
             }
             if (is_string($value) && strpos($value, '[') === 0) {
-                return json_decode($value, true)[0];
+                $decoded = json_decode($value, true);
+                if (is_array($decoded) && array_key_exists(0, $decoded)) {
+                    return $decoded[0];
+                }
             }
         } catch (\Exception $exception) {
             trace_file($exception);
@@ -326,7 +329,10 @@ class SystemService extends Service
         }
         try {
             // 尝试正常反序列解析
-            return unserialize($value);
+            $result = @unserialize($value, ['allowed_classes' => false]);
+            if ($result !== false || $value === 'b:0;') {
+                return $result;
+            }
         } catch (\Exception $exception) {
             trace_file($exception);
         }
@@ -334,9 +340,10 @@ class SystemService extends Service
             // 尝试修复反序列解析
             $unit = 'i:\d+;|b:[01];|s:\d+:".*?";|O:\d+:".*?":\d+:\{';
             $preg = '/(?=^|' . $unit . ')s:(\d+):"(.*?)";(?=' . $unit . '|}+$)/';
-            return unserialize(preg_replace_callback($preg, static function ($attr) {
+            $result = @unserialize(preg_replace_callback($preg, static function ($attr) {
                 return sprintf('s:%d:"%s";', strlen($attr[2]), $attr[2]);
-            }, $value));
+            }, $value), ['allowed_classes' => false]);
+            return $result !== false || $value === 'b:0;' ? $result : $default;
         } catch (\Exception $exception) {
             trace_file($exception);
             return $default;

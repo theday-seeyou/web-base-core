@@ -19,6 +19,7 @@ namespace WebBase\Core\extend;
 
 use SplFileInfo;
 use WebBase\Core\Exception;
+use WebBase\Core\Library;
 
 /**
  * 通用工具扩展.
@@ -89,27 +90,41 @@ class ToolsExtend
      * @param string $todir 目标目录
      * @param array $files 指定文件
      * @param bool $force 强制替换
-     * @param bool $remove 删除文件
+     * @param bool $remove 复制成功后删除来源文件（显式开启时等同移动）
      */
-    public static function copy(string $frdir, string $todir, array $files = [], bool $force = true, bool $remove = true): bool
+    public static function copy(string $frdir, string $todir, array $files = [], bool $force = false, bool $remove = false): bool
     {
-        $frdir = rtrim($frdir, '\/') . DIRECTORY_SEPARATOR;
-        $todir = rtrim($todir, '\/') . DIRECTORY_SEPARATOR;
+        $frdir = static::normalizeDirectory($frdir);
+        $todir = static::normalizeDirectory($todir);
+        if (static::pathsOverlap($frdir, $todir)) {
+            throw new \InvalidArgumentException('Source and destination directories must not be the same or nested.');
+        }
         // 扫描目录文件
         if (empty($files) && is_dir($frdir)) {
             $files = static::find($frdir, null, function (\SplFileInfo $info) {
-                return $info->getBasename()[0] !== '.';
+                return !$info->isLink() && $info->getBasename()[0] !== '.';
             });
         }
         // 复制文件列表
         foreach ($files as $target) {
+            $target = static::normalizeRelativePath((string)$target);
             [$fromPath, $destPath] = [$frdir . $target, $todir . $target];
-            if ($force || !is_file($destPath)) {
-                is_dir($dir = dirname($destPath)) || mkdir($dir, 0777, true);
-                copy($fromPath, $destPath);
+            if (!is_file($fromPath) || is_link($fromPath)) {
+                throw new \RuntimeException("Source file does not exist or is not a regular file: {$fromPath}");
+            }
+            if (!$force && is_file($destPath)) {
+                continue;
+            }
+            if (!is_dir($dir = dirname($destPath)) && !mkdir($dir, 0777, true) && !is_dir($dir)) {
+                throw new \RuntimeException("Unable to create destination directory: {$dir}");
+            }
+            if (!copy($fromPath, $destPath)) {
+                throw new \RuntimeException("Unable to copy file to destination: {$destPath}");
             }
             // 删除来源文件
-            $remove && unlink($fromPath);
+            if ($remove && is_file($destPath) && !unlink($fromPath)) {
+                throw new \RuntimeException("Unable to remove source file after copy: {$fromPath}");
+            }
         }
         // 删除来源目录
         $remove && static::remove($frdir);
@@ -121,15 +136,23 @@ class ToolsExtend
      */
     public static function remove(string $path): bool
     {
-        if (!file_exists($path)) {
+        $path = rtrim(trim($path), '\/');
+        if ($path === '' || static::isProtectedRemovalPath($path)) {
+            throw new \InvalidArgumentException('Refusing to remove an empty, root, working or application path.');
+        }
+        if (!file_exists($path) && !is_link($path)) {
             return true;
         }
-        if (is_file($path)) {
+        if (is_file($path) || is_link($path)) {
             return unlink($path);
         }
         $dirs = [$path];
         iterator_to_array(self::findFilesYield($path, null, function (\SplFileInfo $file) use (&$dirs) {
-            $file->isDir() ? $dirs[] = $file->getPathname() : unlink($file->getPathname());
+            if ($file->isLink() || !$file->isDir()) {
+                unlink($file->getPathname());
+            } else {
+                $dirs[] = $file->getPathname();
+            }
         }));
         usort($dirs, function ($a, $b) {
             return strlen($b) <=> strlen($a);
@@ -138,6 +161,97 @@ class ToolsExtend
             file_exists($dir) && is_dir($dir) && rmdir($dir);
         }
         return !file_exists($path);
+    }
+
+    /**
+     * 标准化目录路径。
+     */
+    private static function normalizeDirectory(string $path): string
+    {
+        $path = rtrim(trim($path), '\/');
+        if ($path === '') {
+            throw new \InvalidArgumentException('Directory path cannot be empty.');
+        }
+        return $path . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * 标准化相对文件路径并拒绝目录穿越。
+     */
+    private static function normalizeRelativePath(string $path): string
+    {
+        $path = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($path));
+        if ($path === '' || str_contains($path, "\0") || preg_match('#^(?:[A-Za-z]:)?[\\\\/]#', $path)) {
+            throw new \InvalidArgumentException("Invalid relative file path: {$path}");
+        }
+        $parts = explode(DIRECTORY_SEPARATOR, $path);
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.' || $part === '..') {
+                throw new \InvalidArgumentException("Unsafe relative file path: {$path}");
+            }
+        }
+        return implode(DIRECTORY_SEPARATOR, $parts);
+    }
+
+    /**
+     * 判断两个路径是否指向相同位置。
+     */
+    private static function pathsOverlap(string $first, string $second): bool
+    {
+        [$first, $second] = [static::canonicalPath($first), static::canonicalPath($second)];
+        return str_starts_with($first, $second) || str_starts_with($second, $first);
+    }
+
+    /**
+     * 解析路径中已存在的最近父目录，避免 Windows 短路径与真实路径不一致。
+     */
+    private static function canonicalPath(string $path): string
+    {
+        $path = rtrim($path, '\/');
+        [$probe, $tail] = [$path, []];
+        while (!file_exists($probe) && dirname($probe) !== $probe) {
+            array_unshift($tail, basename($probe));
+            $probe = dirname($probe);
+        }
+        $base = realpath($probe);
+        $value = ($base !== false ? $base : $probe) . ($tail === [] ? '' : DIRECTORY_SEPARATOR . implode(DIRECTORY_SEPARATOR, $tail));
+        $value = str_replace('\\', '/', $value);
+        $value = DIRECTORY_SEPARATOR === '\\' ? strtolower($value) : $value;
+        return rtrim($value, '/') . '/';
+    }
+
+    /**
+     * 判断路径是否为文件系统根目录。
+     */
+    private static function isFilesystemRoot(string $path): bool
+    {
+        $normalized = str_replace('\\', '/', $path);
+        if ($normalized === '/' || preg_match('#^[A-Za-z]:$#', $normalized) || preg_match('#^//[^/]+/[^/]+$#', $normalized)) {
+            return true;
+        }
+        $real = realpath($path);
+        return $real !== false && dirname($real) === $real;
+    }
+
+    /**
+     * 拒绝删除当前目录、应用目录及其父目录。
+     */
+    private static function isProtectedRemovalPath(string $path): bool
+    {
+        if (in_array($path, ['.', '..'], true) || static::isFilesystemRoot($path)) {
+            return true;
+        }
+        $target = static::canonicalPath($path);
+        $protected = [getcwd() ?: ''];
+        if (isset(Library::$sapp)) {
+            $protected[] = Library::$sapp->getRootPath();
+        }
+        foreach ($protected as $value) {
+            if ($value !== '' && str_starts_with(static::canonicalPath($value), $target)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
