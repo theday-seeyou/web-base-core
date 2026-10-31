@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 - 2026-11-01
+
+- Add shared bcrypt password policy, legacy MD5 verification/rehash, stable session CSRF tokens, atomic single-host login rate limits and server-side upload validation.
+- Consume captcha attempts, use cryptographic challenge identifiers, and reject empty/missing captcha values.
+- Revalidate administrator accounts/password fingerprints and refresh role permissions on every protected request without putting password hashes in session user data.
+- Default CORS to disabled and require exact allowed origins. Preserve response headers and rotated session cookies when controllers return through exceptions.
+- Default form token injection, reject unsafe GET mutations, and refuse unbounded saves or missing-record form updates.
+- Add security regression tests and PHP CI. Consumers must update the companion Starter login/form JavaScript and widen password storage to 255 characters together with this release.
+- Replace generated virtual models with validated TableModel instances; remove the global m() helper and the virtual-model stream implementation.
+
+The password-change plugin event no longer contains plaintext passwords. Existing login sessions must sign in again. File-based rate limiting targets one application host; use a shared atomic limiter for multiple hosts.
+
 ## 0.3.0 - 2026-08-28
 
 ### Added

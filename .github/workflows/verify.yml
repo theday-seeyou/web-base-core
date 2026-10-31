@@ -1,0 +1,21 @@
+name: Verify Core
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  php:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1', '8.2', '8.3']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: curl, gd, mbstring, openssl, fileinfo, zip
+      - run: composer validate --strict --no-check-publish
+      - run: composer update --no-interaction --prefer-dist
+      - run: find src tests -name '*.php' -print0 | xargs -0 -n1 php -l
+      - run: vendor/bin/phpunit
+      - run: composer audit --no-interaction

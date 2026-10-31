@@ -1,6 +1,7 @@
 <?php
 
 use WebBase\Core\extend\PhinxExtend;
+use WebBase\Core\Helper;
 use WebBase\Core\model\SystemConfig;
 use WebBase\Core\model\SystemMenu;
 use WebBase\Core\model\SystemUser;
@@ -39,7 +40,7 @@ class __CLASS__ extends Migrator
         $json = '__DATA_JSON__';
         // 解析并写入扩展数据
         if (is_array($tables = json_decode($json, true)) && count($tables) > 0) {
-            foreach ($tables as $table => $path) if (($model = m($table))->count() < 1) {
+            foreach ($tables as $table => $path) if (($model = Helper::buildModel($table))->count() < 1) {
                 $name = Str::studly($table);
                 ProcessService::message(" -- Starting write {$table} table ..." . PHP_EOL);
                 [$ls, $rs, $fp] = [0, [], fopen(__DIR__ . DIRECTORY_SEPARATOR . $path, 'r+')];
@@ -63,13 +64,13 @@ class __CLASS__ extends Migrator
     {
         $modal = SystemConfig::mk()->whereRaw('1=1')->findOrEmpty();
         $modal->isEmpty() && $modal->insertAll([
-            ['type' => 'base', 'name' => 'app_name', 'value' => 'WebBase CMS'],
+            ['type' => 'base', 'name' => 'app_name', 'value' => 'WebBase Admin'],
             ['type' => 'base', 'name' => 'app_version', 'value' => 'v0.1'],
             ['type' => 'base', 'name' => 'editor', 'value' => 'ckeditor5'],
             ['type' => 'base', 'name' => 'login_name', 'value' => '系统管理'],
             ['type' => 'base', 'name' => 'site_copy', 'value' => '© ' . date('Y') . ' WebBase'],
             ['type' => 'base', 'name' => 'site_icon', 'value' => ''],
-            ['type' => 'base', 'name' => 'site_name', 'value' => 'WebBase CMS'],
+            ['type' => 'base', 'name' => 'site_name', 'value' => 'WebBase Admin'],
             ['type' => 'base', 'name' => 'site_theme', 'value' => 'default'],
             ['type' => 'storage', 'name' => 'type', 'value' => 'local'],
             ['type' => 'storage', 'name' => 'allow_exts', 'value' => 'doc,gif,ico,jpg,mp3,mp4,p12,pem,png,zip,rar,xls,xlsx'],

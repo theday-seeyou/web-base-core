@@ -140,13 +140,14 @@ class Library extends Service
             $this->app->middleware->add(function (Request $request, \Closure $next): Response {
                 $header = ['X-Frame-Options' => $this->app->config->get('app.cors_frame') ?: 'sameorigin'];
                 // HTTP.CORS 跨域规则配置
-                if ($this->app->config->get('app.cors_on', true) && ($origin = $request->header('origin', '-')) !== '-') {
+                if ($this->app->config->get('app.cors_on', false) && ($origin = $request->header('origin', '-')) !== '-') {
                     if (is_string($hosts = $this->app->config->get('app.cors_host', []))) {
                         $hosts = str2arr($hosts);
                     }
-                    if (empty($hosts) || in_array(parse_url(strtolower($origin), PHP_URL_HOST), $hosts)) {
-                        $headers = $this->app->config->get('app.cors_headers', 'Api-Name,Api-Type,Api-Token,Jwt-Token,User-Form-Token,User-Token,Token');
+                    if (in_array($origin, $hosts, true)) {
+                        $headers = $this->app->config->get('app.cors_headers', 'Api-Name,Api-Type,Api-Token,Jwt-Token,X-CSRF-Token,User-Form-Token,User-Token,Token');
                         $header['Access-Control-Allow-Origin'] = $origin;
+                        $header['Vary'] = 'Origin';
                         $header['Access-Control-Allow-Methods'] = $this->app->config->get('app.cors_methods', 'GET,PUT,POST,PATCH,DELETE');
                         $header['Access-Control-Allow-Headers'] = "Authorization,Content-Type,If-Match,If-Modified-Since,If-None-Match,If-Unmodified-Since,X-Requested-With,{$headers}";
                         $header['Access-Control-Allow-Credentials'] = 'true';
@@ -157,7 +158,12 @@ class Library extends Service
                 if ($request->isOptions()) {
                     throw new HttpResponseException(response()->code(204)->header($header));
                 }
-                return $next($request)->header($header);
+                try {
+                    return $next($request)->header($header);
+                } catch (HttpResponseException $exception) {
+                    $exception->getResponse()->header($header);
+                    throw $exception;
+                }
             });
 
             // 初始化会话和语言包

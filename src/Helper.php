@@ -17,7 +17,6 @@ declare(strict_types=1);
 
 namespace WebBase\Core;
 
-use WebBase\Core\extend\VirtualModel;
 use think\App;
 use think\Container;
 use think\db\BaseQuery;
@@ -109,7 +108,7 @@ abstract class Helper
     }
 
     /**
-     * 动态创建模型对象
+     * 创建显式模型或安全的数据表模型对象.
      * @param mixed $name 模型名称
      * @param array $data 初始数据
      * @param mixed $conn 指定连接
@@ -125,7 +124,7 @@ abstract class Helper
             }
             $name = basename(str_replace('\\', '/', $name));
         }
-        return VirtualModel::mk($name, $data, $conn);
+        return new TableModel($name, $data, $conn);
     }
 
     /**

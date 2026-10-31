@@ -1,6 +1,10 @@
 # WebBase Core
 
-`theday-seeyou/web-base-core` 是 WebBase CMS 的可复用后台核心包，基于 ThinkPHP 8，提供控制器、模型、查询助手、RBAC、队列、存储和运行时服务。
+`theday-seeyou/web-base-core` 是 WebBase 的可复用 ThinkPHP 后台核心包，
+提供控制器、模型、查询助手、RBAC、队列、存储和运行时服务。
+
+本包只包含通用后台基础设施，不包含动态内容模型设计器、页面搭建、
+模板协议、模板市场或企业站内容产品能力。
 
 ## 安装
 

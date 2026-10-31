@@ -249,13 +249,22 @@ class AdminService extends Service
             return [];
         }
         $user = SystemUser::mk()->where(['id' => $uuid])->findOrEmpty()->toArray();
-        if (!static::isSuper() && count($aids = str2arr($user['authorize'])) > 0) {
+        $session = Library::$sapp->session;
+        $fingerprint = hash('sha256', (string)($user['password'] ?? ''));
+        if (empty($user) || empty($user['status']) || !empty($user['deleted_at']) ||
+            !hash_equals((string)$session->get('auth_password', ''), $fingerprint)) {
+            $session->delete('user');
+            $session->delete('auth_password');
+            return [];
+        }
+        if ($user['username'] !== static::getSuperName() && count($aids = str2arr($user['authorize'] ?? '')) > 0) {
             $aids = SystemAuth::mk()->where(['status' => 1])->whereIn('id', $aids)->column('id');
             if (!empty($aids)) {
                 $nodes = SystemNode::mk()->distinct()->whereIn('auth', $aids)->column('node');
             }
         }
         $user['nodes'] = $nodes ?? [];
+        unset($user['password']);
         Library::$sapp->session->set('user', $user);
         return $user;
     }

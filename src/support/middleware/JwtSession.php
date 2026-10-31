@@ -94,7 +94,14 @@ class JwtSession
         }
 
         // 执行下一步控制器操作
-        return $next($request)->setSession($this->session);
+        try {
+            return $next($request)->setSession($this->session);
+        } finally {
+            // Responses such as controller success() also rotate via exceptions.
+            if (empty(JwtExtend::$sessionId)) {
+                $this->app->cookie->set($this->session->getName(), $this->session->getId());
+            }
+        }
     }
 
     /**

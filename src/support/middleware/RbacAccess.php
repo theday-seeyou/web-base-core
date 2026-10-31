@@ -18,6 +18,7 @@ declare(strict_types=1);
 namespace WebBase\Core\support\middleware;
 
 use WebBase\Core\service\AdminService;
+use WebBase\Core\service\CsrfService;
 use think\App;
 use think\exception\HttpResponseException;
 use think\Request;
@@ -48,6 +49,13 @@ class RbacAccess
      */
     public function handle(Request $request, \Closure $next): Response
     {
+        $appName = $this->app->http->getName();
+        if (in_array($appName, $this->app->config->get('app.csrf_apps', ['admin']), true)) {
+            AdminService::apply();
+            if (!CsrfService::check($request)) {
+                throw new HttpResponseException(json(['code' => 0, 'info' => '表单令牌验证失败，请刷新页面重试。'], 403));
+            }
+        }
         // HTTP.LANG 语言包处理
         $langSet = $this->app->lang->getLangSet();
         if (is_file($file = dirname(__DIR__, 2) . "/lang/{$langSet}.php")) {

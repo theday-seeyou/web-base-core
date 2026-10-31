@@ -18,15 +18,23 @@ declare(strict_types=1);
 namespace WebBase\Core\tests;
 
 use PHPUnit\Framework\TestCase;
-use WebBase\Core\model\SystemUser;
+use InvalidArgumentException;
+use WebBase\Core\TableModel;
 
 class ModelTest extends TestCase
 {
-    public function testVirtualModel()
+    public function testTableModelUsesValidatedNameAndConnection(): void
     {
-        if (!getenv('WEBBASE_TEST_DB_NAME')) {
-            self::markTestSkipped('Set WEBBASE_TEST_DB_NAME to run database integration tests.');
-        }
-        $this->assertEquals(m('SystemUser')->getTable(), SystemUser::mk()->getTable(), '动态模型测试');
+        $model = new TableModel('SystemUser', [], 'testing');
+
+        self::assertSame('SystemUser', $model->getName());
+        self::assertSame('testing', $model->getConnection());
+    }
+
+    public function testTableModelRejectsUnsafeName(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new TableModel('users; DROP TABLE users');
     }
 }

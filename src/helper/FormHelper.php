@@ -50,6 +50,13 @@ class FormHelper extends Helper
         $query = static::buildQuery($dbQuery);
         $field = $field ?: ($query->getPk() ?: 'id');
         $value = $edata[$field] ?? input($field);
+        $action = strtolower($this->app->request->action());
+        if (($action === 'add' && $value !== null) || ($action === 'edit' && ($value === null || $value === ''))) {
+            $this->class->error('新增或编辑操作的记录编号不合法。');
+        }
+        if ($value !== null && !(clone $query)->where([$field => $value])->where($where)->find()) {
+            $this->class->error('记录不存在或已删除。');
+        }
         if ($this->app->request->isGet()) {
             if ($value !== null) {
                 $exist = $query->where([$field => $value])->where($where)->find();

@@ -19,6 +19,7 @@ namespace WebBase\Core\helper;
 
 use WebBase\Core\Helper;
 use WebBase\Core\Library;
+use WebBase\Core\service\CsrfService;
 use think\exception\HttpResponseException;
 
 /**
@@ -34,12 +35,7 @@ class TokenHelper extends Helper
     public function init(bool $return = false)
     {
         $this->class->csrf_state = true;
-        if (!$this->app->request->isPost()) {
-            return true;
-        }
-        $token = $this->app->request->post('_token_');
-        $extra = ['_token_' => $token ?: $this->app->request->header('User-Form-Token')];
-        if ($this->app->request->checkToken('_token_', $extra)) {
+        if (CsrfService::check($this->app->request)) {
             return true;
         }
         if ($return) {
@@ -69,6 +65,6 @@ class TokenHelper extends Helper
      */
     public static function token(): string
     {
-        return Library::$sapp->request->buildToken('_token_');
+        return CsrfService::token();
     }
 }

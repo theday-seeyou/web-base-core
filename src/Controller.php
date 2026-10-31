@@ -70,7 +70,7 @@ class Controller extends \stdClass
      * 表单CSRF验证状态
      * @var bool
      */
-    public $csrf_state = false;
+    public $csrf_state = true;
 
     /**
      * 表单CSRF验证消息.

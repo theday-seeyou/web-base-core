@@ -39,10 +39,16 @@ class SaveHelper extends Helper
      */
     public function init($dbQuery, array $edata = [], string $field = '', $where = [])
     {
+        if (!$this->app->runningInConsole() && !$this->app->request->isPost()) {
+            $this->class->error('请使用 POST 请求。');
+        }
         $query = static::buildQuery($dbQuery);
         $field = $field ?: ($query->getPk() ?: 'id');
         $edata = $edata ?: $this->app->request->post();
         $value = $this->app->request->post($field);
+        if (($value === null || $value === '') && empty($where) && !$query->getOptions('where')) {
+            $this->class->error('缺少更新记录的条件。');
+        }
 
         // 主键限制处理
         if (!isset($where[$field]) && !is_null($value)) {
