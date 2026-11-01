@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.1 - 2026-11-01
+
+- Enable default nullable deleted_at soft deletion for roles, menus and attachment records, alongside users and dictionaries.
+- Preserve role grants during recycling and restoration; permanently remove grants only for role IDs actually purged inside the same transaction.
+- Hide account password hashes from model serialization while retaining session password-fingerprint validation.
+- Reject structured language parameters before the framework string parser, preventing malformed language input from returning HTTP 500.
+- Treat missing or non-array queue payloads as empty arrays so terminal tasks can be reset safely.
+- Companion Starter adds real recycle views and owner-scoped attachment actions, tree-menu validation, a public Chinese/English index and expanded administration HTTP regressions.
+
 ## 0.5.0 - 2026-11-01
 
 - Standardize model audit fields as created_at and updated_at DATETIME with automatic writes; keep deleted_at NULL as the only soft-delete contract.

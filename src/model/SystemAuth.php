@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace WebBase\Core\model;
 
-use WebBase\Core\Model;
+use WebBase\Core\BaseModel;
 use think\db\exception\DataNotFoundException;
 use think\db\exception\DbException;
 use think\db\exception\ModelNotFoundException;
@@ -34,7 +34,7 @@ use think\db\exception\ModelNotFoundException;
  * @property string $utype 身份权限
  * @class SystemAuth
  */
-class SystemAuth extends Model
+class SystemAuth extends BaseModel
 {
     /**
      * 日志名称.
@@ -62,7 +62,7 @@ class SystemAuth extends Model
     /**
      * 删除权限事件.
      */
-    public function onAdminDelete(string $ids)
+    public function onAdminForceDelete(string $ids)
     {
         if (count($aids = str2arr($ids)) > 0) {
             SystemNode::mk()->whereIn('auth', $aids)->delete();

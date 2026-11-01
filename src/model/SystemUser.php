@@ -45,6 +45,8 @@ use think\model\relation\HasOne;
  */
 class SystemUser extends BaseModel
 {
+    protected $hidden = ['password'];
+
     /**
      * 日志名称.
      * @var string

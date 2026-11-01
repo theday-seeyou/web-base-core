@@ -63,10 +63,18 @@ class ForceDeleteHelper extends Helper
 
         $query->whereNotNull('deleted_at');
         $query->removeOption('soft_delete');
-        $result = $query->delete();
-        if ($result !== false && $model instanceof \WebBase\Core\Model) {
-            $model->onAdminForceDelete(strval($value));
-        }
+        $result = $query->getConnection()->transaction(static function () use ($query, $model, $field) {
+            // Only notify hooks about rows actually selected from the recycle bin.
+            $ids = (clone $query)->lock(true)->column($field);
+            if ($ids === []) {
+                return 0;
+            }
+            $result = $query->delete();
+            if ($result > 0) {
+                $model->onAdminForceDelete(implode(',', $ids));
+            }
+            return $result;
+        });
         if ($this->class->callback('_force_delete_result', $result) === false) {
             return $result;
         }

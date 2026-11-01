@@ -31,7 +31,7 @@ use WebBase\Core\support\middleware\RbacAccess;
 use think\App;
 use think\exception\HttpException;
 use think\exception\HttpResponseException;
-use think\middleware\LoadLangPack;
+use WebBase\Core\support\middleware\LoadLangPack;
 use think\Request;
 use think\Response;
 use think\Service;

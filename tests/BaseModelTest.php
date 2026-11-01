@@ -38,5 +38,15 @@ class BaseModelTest extends TestCase
     {
         self::assertTrue(is_subclass_of(SystemBase::class, BaseModel::class));
         self::assertTrue(is_subclass_of(SystemUser::class, BaseModel::class));
+        self::assertTrue(is_subclass_of(\WebBase\Core\model\SystemAuth::class, BaseModel::class));
+        self::assertTrue(is_subclass_of(\WebBase\Core\model\SystemMenu::class, BaseModel::class));
+        self::assertTrue(is_subclass_of(\WebBase\Core\model\SystemFile::class, BaseModel::class));
+    }
+
+    public function testAccountSerializationDoesNotExposePasswordHashes(): void
+    {
+        $account = new SystemUser(['id' => 1, 'username' => 'test', 'password' => 'private hash']);
+        self::assertArrayNotHasKey('password', $account->toArray());
+        self::assertSame('private hash', $account->getData('password'));
     }
 }

@@ -56,6 +56,10 @@ Article::mRestore();       // 恢复
 Article::mForceDelete();   // 从回收站永久删除
 ```
 
+系统用户、角色、菜单、字典和附件记录默认继承 `BaseModel`。角色授权节点只在永久删除
+角色时清理，回收和恢复保留原授权。用户序列化隐藏密码哈希。队列、操作日志、配置和
+内部关联记录使用 `Model`，由明确的维护操作物理清理。
+
 Starter 的 `migrate:create` 默认使用本包的迁移模板。也可以手动继承
 `WebBase\Core\migration\Migrator`，通过以下方法创建表：
 

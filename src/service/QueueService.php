@@ -91,7 +91,8 @@ class QueueService extends Service
                 throw new Exception($message);
             }
             $this->code = $code;
-            $this->data = json_decode($this->record['exec_data'], true) ?: [];
+            $data = json_decode((string)($this->record['exec_data'] ?? ''), true);
+            $this->data = is_array($data) ? $data : [];
             $this->title = $this->record['title'];
         }
         // 消息写入数据库

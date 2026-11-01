@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace WebBase\Core\model;
 
-use WebBase\Core\Model;
+use WebBase\Core\BaseModel;
 
 /**
  * 系统菜单模型.
@@ -35,7 +35,7 @@ use WebBase\Core\Model;
  * @property string $url 链接节点
  * @class SystemMenu
  */
-class SystemMenu extends Model
+class SystemMenu extends BaseModel
 {
     /**
      * 日志名称.

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace WebBase\Core\model;
 
-use WebBase\Core\Model;
+use WebBase\Core\BaseModel;
 use think\model\relation\HasOne;
 
 /**
@@ -43,7 +43,7 @@ use think\model\relation\HasOne;
  * @property SystemUser $user
  * @class SystemFile
  */
-class SystemFile extends Model
+class SystemFile extends BaseModel
 {
     /**
      * 关联用户数据.

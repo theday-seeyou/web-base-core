@@ -248,9 +248,10 @@ class AdminService extends Service
         if (($uuid = static::getUserId()) <= 0) {
             return [];
         }
-        $user = SystemUser::mk()->where(['id' => $uuid])->findOrEmpty()->toArray();
+        $account = SystemUser::mk()->where(['id' => $uuid])->findOrEmpty();
+        $user = $account->toArray();
         $session = Library::$sapp->session;
-        $fingerprint = hash('sha256', (string)($user['password'] ?? ''));
+        $fingerprint = hash('sha256', (string)($account['password'] ?? ''));
         if (empty($user) || empty($user['status']) || !empty($user['deleted_at']) ||
             !hash_equals((string)$session->get('auth_password', ''), $fingerprint)) {
             $session->delete('user');
