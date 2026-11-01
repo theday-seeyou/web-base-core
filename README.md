@@ -38,8 +38,10 @@ use WebBase\Core\service\AdminService;
 
 ## 默认软删除与回收站
 
-需要回收站能力的业务模型统一继承 `BaseModel`，对应数据表必须包含
-`deleted_at datetime null default null`。框架不检测也不兼容其他删除字段。
+0.5 系列统一使用自增 `id` 和 DATETIME 类型的 `created_at`、`updated_at`、`deleted_at`。
+`Model` 自动写入创建和更新时间，`BaseModel` 在此基础上默认开启软删除。
+`deleted_at datetime null default null` 是唯一删除字段，框架不检测也不兼容其他删除字段。
+本版本面向全新安装，不提供旧时间字段或 MD5 账号转换。
 
 ```php
 final class Article extends BaseModel
@@ -53,6 +55,24 @@ Article::mDelete();        // 软删除
 Article::mRestore();       // 恢复
 Article::mForceDelete();   // 从回收站永久删除
 ```
+
+Starter 的 `migrate:create` 默认使用本包的迁移模板。也可以手动继承
+`WebBase\Core\migration\Migrator`，通过以下方法创建表：
+
+```php
+$this->createTable('articles')
+    ->addColumn('title', 'string', ['limit' => 200])
+    ->create();
+```
+
+`createTable()` 默认添加 `BIGINT UNSIGNED` 自增主键，以及创建、更新、删除时间字段，
+并为 `deleted_at` 建索引。创建和更新时间非空，默认使用 `CURRENT_TIMESTAMP`；
+更新时间同时使用 `ON UPDATE CURRENT_TIMESTAMP`，覆盖查询构造器和原生 SQL 的更新。
+删除时间可空且默认为 NULL。创建已有表会报错，修改表使用 `table()->...->update()`。
+数据库操作仅在显式执行迁移时发生。
+
+密码使用 `password_hash` / `password_verify` 验证 bcrypt，长度为 12–72 字节。
+保留 bcrypt 成本参数更新，不识别或升级旧 MD5 密码。
 
 ## 开发
 

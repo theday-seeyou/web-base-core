@@ -30,13 +30,13 @@ use think\model\relation\HasOne;
  * @property int $status 上传状态(1悬空,2落地)
  * @property int $unid 会员编号
  * @property int $uuid 用户编号
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $hash 文件哈希
  * @property string $mime 文件类型
  * @property string $name 文件名称
  * @property string $tags 文件标签
  * @property string $type 上传类型
- * @property string $update_at 更新时间
+ * @property string $updated_at 更新时间
  * @property string $xext 文件后缀
  * @property string $xkey 文件路径
  * @property string $xurl 访问链接
@@ -45,18 +45,6 @@ use think\model\relation\HasOne;
  */
 class SystemFile extends Model
 {
-    /**
-     * 创建字段.
-     * @var string
-     */
-    protected $createTime = 'create_at';
-
-    /**
-     * 更新字段.
-     * @var string
-     */
-    protected $updateTime = 'update_at';
-
     /**
      * 关联用户数据.
      */
@@ -69,7 +57,7 @@ class SystemFile extends Model
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }
@@ -78,7 +66,7 @@ class SystemFile extends Model
      * 格式化更新时间.
      * @param mixed $value
      */
-    public function getUpdateAtAttr($value): string
+    public function getUpdatedAtAttr($value): string
     {
         return format_datetime($value);
     }

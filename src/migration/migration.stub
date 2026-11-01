@@ -1,0 +1,17 @@
+<?php
+
+declare(strict_types=1);
+
+use WebBase\Core\migration\Migrator;
+
+final class MigratorClass extends Migrator
+{
+    public function change(): void
+    {
+        // createTable adds id, created_at, updated_at and nullable deleted_at.
+        // $this->createTable('articles')
+        //     ->addColumn('title', 'string', ['limit' => 200])
+        //     ->create();
+        // For existing tables, use $this->table('articles')->...->update().
+    }
+}

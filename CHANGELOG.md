@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - 2026-11-01
+
+- Standardize model audit fields as created_at and updated_at DATETIME with automatic writes; keep deleted_at NULL as the only soft-delete contract.
+- Remove old system-model timestamp overrides and update queue, log and message consumers.
+- Add an explicit migration base and creator template that supply an unsigned auto-increment id and all three DATETIME columns, with safe refusal for occupied table names and reversible change migrations.
+- Remove MD5 password verification and the legacy upgrade API. Require the same 12–72 byte bcrypt policy for login and new passwords; retain bcrypt cost rehashing.
+- This is a fresh-install schema boundary and requires the matching Starter 0.5. Existing 0.4 tags retain their original behavior.
+
 ## 0.4.0 - 2026-11-01
 
 - Add shared bcrypt password policy, legacy MD5 verification/rehash, stable session CSRF tokens, atomic single-host login rate limits and server-side upload validation.

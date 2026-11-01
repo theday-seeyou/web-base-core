@@ -27,7 +27,7 @@ use WebBase\Core\BaseModel;
  * @property int $status 数据状态(0禁用,1启动)
  * @property string $code 数据代码
  * @property string $content 数据内容
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $deleted_at 删除时间
  * @property string $name 数据名称
  * @property string $type 数据类型
@@ -35,10 +35,6 @@ use WebBase\Core\BaseModel;
  */
 class SystemBase extends BaseModel
 {
-    protected $createTime = 'create_at';
-
-    protected $updateTime = false;
-
     /**
      * 日志名称.
      * @var string
@@ -92,7 +88,7 @@ class SystemBase extends BaseModel
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }

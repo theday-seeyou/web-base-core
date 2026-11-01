@@ -23,9 +23,9 @@ use WebBase\Core\Model;
  * 系统数据模型.
  *
  * @property int $id
- * @property string $create_time 创建时间
+ * @property string $created_at 创建时间
  * @property string $name 配置名
- * @property string $update_time 更新时间
+ * @property string $updated_at 更新时间
  * @property string $value 配置值
  * @class SystemData
  */

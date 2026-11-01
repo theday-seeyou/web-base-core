@@ -28,7 +28,7 @@ use think\db\exception\ModelNotFoundException;
  * @property int $id
  * @property int $sort 排序权重
  * @property int $status 权限状态(1使用,0禁用)
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $desc 备注说明
  * @property string $title 权限名称
  * @property string $utype 身份权限
@@ -36,10 +36,6 @@ use think\db\exception\ModelNotFoundException;
  */
 class SystemAuth extends Model
 {
-    protected $createTime = 'create_at';
-
-    protected $updateTime = false;
-
     /**
      * 日志名称.
      * @var string
@@ -78,7 +74,7 @@ class SystemAuth extends Model
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }

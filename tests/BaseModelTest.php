@@ -25,13 +25,16 @@ class BaseModelTest extends TestCase
 
         self::assertSame('deleted_at', $defaults['deleteTime']);
         self::assertNull($defaults['defaultSoftDelete']);
+        self::assertSame('created_at', $defaults['createTime']);
+        self::assertSame('updated_at', $defaults['updateTime']);
+        self::assertSame('datetime', $defaults['autoWriteTimestamp']);
         self::assertContains(\think\model\concern\SoftDelete::class, class_uses(BaseModel::class));
 
         $model = (new \ReflectionClass(SoftDeleteModelFixture::class))->newInstanceWithoutConstructor();
         self::assertMatchesRegularExpression('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $model->timestampForTest());
     }
 
-    public function testLegacySoftDeleteModelsUseBaseModel(): void
+    public function testSystemSoftDeleteModelsUseBaseModel(): void
     {
         self::assertTrue(is_subclass_of(SystemBase::class, BaseModel::class));
         self::assertTrue(is_subclass_of(SystemUser::class, BaseModel::class));

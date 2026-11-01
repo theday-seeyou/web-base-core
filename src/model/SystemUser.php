@@ -31,7 +31,7 @@ use think\model\relation\HasOne;
  * @property string $contact_mail 联系邮箱
  * @property string $contact_phone 联系手机
  * @property string $contact_qq 联系QQ
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $describe 备注说明
  * @property string $headimg 头像地址
  * @property string $login_at 登录时间
@@ -45,10 +45,6 @@ use think\model\relation\HasOne;
  */
 class SystemUser extends BaseModel
 {
-    protected $createTime = 'create_at';
-
-    protected $updateTime = false;
-
     /**
      * 日志名称.
      * @var string
@@ -122,7 +118,7 @@ class SystemUser extends BaseModel
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }

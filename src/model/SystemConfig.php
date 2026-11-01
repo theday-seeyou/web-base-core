@@ -30,7 +30,5 @@ use WebBase\Core\Model;
  */
 class SystemConfig extends Model
 {
-    protected $updateTime = false;
-
     protected $createTime = false;
 }

@@ -22,7 +22,7 @@ use think\model\concern\SoftDelete;
 /**
  * 默认启用软删除的业务模型基类.
  *
- * 继承此类的数据表必须包含 nullable datetime `deleted_at` 字段。
+ * 继承此类的数据表必须包含 id、created_at、updated_at 和 nullable datetime deleted_at。
  * 未删除记录的字段值为 NULL，删除后写入删除时间。
  *
  * @class BaseModel
@@ -44,11 +44,4 @@ abstract class BaseModel extends Model
      */
     protected $defaultSoftDelete = null;
 
-    /**
-     * 软删除时间统一写入数据库日期时间格式，不强制开启创建/更新时间自动写入.
-     */
-    protected function autoWriteTimestamp(): string
-    {
-        return date('Y-m-d H:i:s');
-    }
 }

@@ -26,7 +26,7 @@ use WebBase\Core\Model;
  * @property int $pid 上级ID
  * @property int $sort 排序权重
  * @property int $status 状态(0:禁用,1:启用)
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $icon 菜单图标
  * @property string $node 节点代码
  * @property string $params 链接参数
@@ -37,10 +37,6 @@ use WebBase\Core\Model;
  */
 class SystemMenu extends Model
 {
-    protected $createTime = 'create_at';
-
-    protected $updateTime = false;
-
     /**
      * 日志名称.
      * @var string
@@ -57,7 +53,7 @@ class SystemMenu extends Model
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }

@@ -30,10 +30,6 @@ use WebBase\Core\Model;
  */
 class SystemNode extends Model
 {
-    protected $updateTime = false;
-
-    protected $createTime = false;
-
     /**
      * 绑定模型名称.
      * @var string

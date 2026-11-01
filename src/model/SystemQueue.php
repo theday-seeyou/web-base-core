@@ -33,7 +33,7 @@ use WebBase\Core\Model;
  * @property int $status 任务状态(1新任务,2处理中,3成功,4失败)
  * @property string $code 任务编号
  * @property string $command 执行指令
- * @property string $create_at 创建时间
+ * @property string $created_at 创建时间
  * @property string $exec_data 执行参数
  * @property string $exec_desc 执行描述
  * @property string $message 最新消息
@@ -42,10 +42,6 @@ use WebBase\Core\Model;
  */
 class SystemQueue extends Model
 {
-    protected $createTime = 'create_at';
-
-    protected $updateTime = false;
-
     /**
      * 格式化计划时间.
      * @param mixed $value
@@ -80,7 +76,7 @@ class SystemQueue extends Model
      * 格式化创建时间.
      * @param mixed $value
      */
-    public function getCreateAtAttr($value): string
+    public function getCreatedAtAttr($value): string
     {
         return format_datetime($value);
     }

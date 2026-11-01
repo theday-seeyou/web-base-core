@@ -37,6 +37,18 @@ use think\db\Query;
  */
 abstract class Model extends \think\Model
 {
+    /** All WebBase tables use SQL DATETIME audit columns. */
+    protected $autoWriteTimestamp = 'datetime';
+
+    protected $createTime = 'created_at';
+
+    protected $updateTime = 'updated_at';
+
+    protected function autoWriteTimestamp(): string
+    {
+        return date('Y-m-d H:i:s');
+    }
+
     /**
      * 日志过滤.
      * @var callable

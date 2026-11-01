@@ -17,15 +17,19 @@ use think\Request;
 
 final class AuthenticationSecurityTest extends TestCase
 {
-    public function testPasswordUpgradePreservesLegacyLoginAndRejectsWrongPassword(): void
+    public function testPasswordsAcceptModernHashesAndRejectMd5(): void
     {
-        self::assertTrue(PasswordService::verify('legacy-pass', md5('legacy-pass')));
-        self::assertFalse(PasswordService::verify('wrong', md5('legacy-pass')));
+        self::assertFalse(PasswordService::verify('A long legacy password', md5('A long legacy password')));
+        self::assertFalse(PasswordService::verify('A long legacy password', strtoupper(md5('A long legacy password'))));
+        self::assertFalse(PasswordService::verify('A long legacy password', '$1$salt$invalid-md5-crypt'));
         $hash = PasswordService::hash('A long test password 123!');
         self::assertTrue(PasswordService::verify('A long test password 123!', $hash));
         self::assertFalse(PasswordService::verify('wrong', $hash));
         self::assertFalse(PasswordService::needsRehash($hash));
-        self::assertTrue(PasswordService::needsRehash(md5('legacy-pass')));
+        $olderCost = password_hash('A long test password 123!', PASSWORD_BCRYPT, ['cost' => 10]);
+        self::assertTrue(PasswordService::verify('A long test password 123!', $olderCost));
+        self::assertTrue(PasswordService::needsRehash($olderCost));
+        self::assertFalse(PasswordService::verify('short', password_hash('short', PASSWORD_BCRYPT)));
     }
 
     public function testNewPasswordsCannotSilentlyTruncate(): void
